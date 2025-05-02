@@ -1,7 +1,7 @@
 from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
 
-# Load the tokenizer and model (LLaMA 2 variant from Hugging Face)
-model_name = "meta-llama/Llama-2-7b-chat-hf"
+# Load the tokenizer and model (LLaMA 3.1 variant from Hugging Face)
+model_name = "unsloth/Meta-Llama-3.1-8B"
 
 tokenizer = AutoTokenizer.from_pretrained(model_name)
 model = AutoModelForCausalLM.from_pretrained(model_name, device_map="auto")
