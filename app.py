@@ -1,45 +1,46 @@
+import streamlit as st
 from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
 from huggingface_hub import login
 import os
 
-# Optional: Set your Hugging Face token in the environment or manually login
+# Hugging Face login (optional)
 # os.environ["HUGGINGFACE_HUB_TOKEN"] = "your_token_here"
 # login(token=os.getenv("HUGGINGFACE_HUB_TOKEN"))
 
-# Load the tokenizer and model
-model_name = "unsloth/Meta-Llama-3.1-8B"
-
-try:
-    print("🔄 Loading model and tokenizer...")
+@st.cache_resource(show_spinner="Loading model...")
+def load_chatbot():
+    model_name = "unsloth/Meta-Llama-3.1-8B"
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     model = AutoModelForCausalLM.from_pretrained(model_name, device_map="auto")
-    chatbot = pipeline("text-generation", model=model, tokenizer=tokenizer)
-    print("✅ Model loaded successfully.\n")
-except Exception as e:
-    print(f"❌ Failed to load model: {e}")
-    exit(1)
+    return pipeline("text-generation", model=model, tokenizer=tokenizer)
 
-# Chat loop
-print("🤖 Welcome to LLaMA 3.1 Chat! Type 'exit' to quit.\n")
+chatbot = load_chatbot()
 
-while True:
-    user_input = input("You: ").strip()
-    if user_input.lower() == "exit":
-        print("👋 Goodbye!")
-        break
+st.title("🦙 LLaMA 3.1 Chatbot")
+st.markdown("Chat with the `unsloth/Meta-Llama-3.1-8B` model.")
 
-    prompt = f"[INST] {user_input} [/INST]"
-    try:
+if "chat_history" not in st.session_state:
+    st.session_state.chat_history = []
+
+with st.form("chat_form"):
+    user_input = st.text_area("Your message:", "", height=100)
+    submitted = st.form_submit_button("Send")
+
+if submitted and user_input.strip():
+    prompt = f"[INST] {user_input.strip()} [/INST]"
+    with st.spinner("LLaMA is thinking..."):
         response = chatbot(
             prompt,
             max_length=512,
             do_sample=True,
             temperature=0.7,
             top_p=0.9,
-            pad_token_id=tokenizer.eos_token_id
+            pad_token_id=chatbot.tokenizer.eos_token_id
         )
-        generated = response[0]["generated_text"]
-        reply = generated.replace(prompt, "").strip()
-        print(f"LLaMA: {reply}\n")
-    except Exception as err:
-        print(f"⚠️ Error during generation: {err}")
+        reply = response[0]["generated_text"].replace(prompt, "").strip()
+        st.session_state.chat_history.append(("You", user_input.strip()))
+        st.session_state.chat_history.append(("LLaMA", reply))
+
+# Display chat history
+for sender, message in st.session_state.chat_history:
+    st.markdown(f"**{sender}:** {message}")
